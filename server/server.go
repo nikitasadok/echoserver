@@ -18,7 +18,7 @@ type Server interface {
 	Listen()
 }
 
-type EchoServer struct {
+type echoServer struct {
 	listener        net.Listener
 	connQueue       connectionQueue.ConnectionQueue
 	idleTimeout     time.Duration
@@ -28,7 +28,7 @@ type EchoServer struct {
 	currentConnsMux sync.Mutex
 }
 
-func NewEchoServer(host, port string) (*EchoServer, error) {
+func NewEchoServer(host, port string) (*echoServer, error) {
 	if host == "" || port == "" {
 		return nil, errors.Wrap(models.ErrCreateServer, "host or port param is empty")
 	}
@@ -38,7 +38,7 @@ func NewEchoServer(host, port string) (*EchoServer, error) {
 		return nil, errors.WithMessage(err, models.ErrCreateServer.Error())
 	}
 
-	return &EchoServer{
+	return &echoServer{
 		listener:     listener,
 		maxConns:     models.MaxConns,
 		maxReadBytes: models.MaxReadBytes,
@@ -47,14 +47,15 @@ func NewEchoServer(host, port string) (*EchoServer, error) {
 	}, nil
 }
 
-func (s *EchoServer) Listen() {
+func (s *echoServer) Listen() {
 	for {
 		if s.connQueue.Len() == s.maxConns {
 			s.closeLeastUpdConn()
 		}
 		conn, err := s.listener.Accept()
 		if err != nil {
-			log.Panicln(err)
+			log.Println("Error accepting connection", err)
+			continue
 		}
 		c := models.Connection{
 			Conn:       conn,
@@ -65,7 +66,7 @@ func (s *EchoServer) Listen() {
 	}
 }
 
-func (s *EchoServer) handleRequest(c *models.Connection) {
+func (s *echoServer) handleRequest(c *models.Connection) {
 	s.currentConnsMux.Lock()
 	s.currentConns++
 	s.currentConnsMux.Unlock()
@@ -103,11 +104,11 @@ func (s *EchoServer) handleRequest(c *models.Connection) {
 	}
 }
 
-func (s *EchoServer) isQuit(data []byte) bool {
+func (s *echoServer) isQuit(data []byte) bool {
 	return string(data) == "quit"
 }
 
-func (s *EchoServer) closeLeastUpdConn() {
+func (s *echoServer) closeLeastUpdConn() {
 	heap.Init(&s.connQueue)
 	c := s.connQueue.Pop()
 	conn := c.(*models.Connection)
@@ -122,7 +123,7 @@ func (s *EchoServer) closeLeastUpdConn() {
 	s.currentConnsMux.Unlock()
 }
 
-func (s *EchoServer) handleReadError(err error, conn net.Conn) {
+func (s *echoServer) handleReadError(err error, conn net.Conn) {
 	if err == io.EOF {
 		if _, err := conn.Write([]byte(models.MsgEOF)); err != nil {
 			log.Println("Error writing EOF response", err)

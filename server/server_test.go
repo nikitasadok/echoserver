@@ -40,7 +40,7 @@ func TestEchoServer_closeLeastUpdConn(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		s := &EchoServer{
+		s := &echoServer{
 			listener:     tt.fields.listener,
 			connQueue:    tt.fields.connQueue,
 			idleTimeout:  tt.fields.idleTimeout,
@@ -74,16 +74,12 @@ func TestEchoServer_handleRequest(t *testing.T) {
 		maxReadBytes int
 		currentConns int
 	}
-	type args struct {
-		c *models.Connection
-	}
 	l, _ := net.Listen("tcp", "127.0.0.1:3333")
 
 	client, _ := net.Dial("tcp", "127.0.0.1:3333")
 	tests := []struct {
 		name   string
 		fields fields
-		args   args
 		client net.Conn
 		want   string
 		sleep  time.Duration
@@ -151,7 +147,7 @@ func TestEchoServer_handleRequest(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			s := &EchoServer{
+			s := &echoServer{
 				listener:     tt.fields.listener,
 				connQueue:    tt.fields.connQueue,
 				idleTimeout:  tt.fields.idleTimeout,
@@ -209,7 +205,7 @@ func TestEchoServer_isQuit(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			s := &EchoServer{
+			s := &echoServer{
 				listener:     tt.fields.listener,
 				connQueue:    tt.fields.connQueue,
 				idleTimeout:  tt.fields.idleTimeout,
@@ -231,7 +227,7 @@ func TestNewEchoServer(t *testing.T) {
 	tests := []struct {
 		name    string
 		args    args
-		want    *EchoServer
+		want    *echoServer
 		wantErr error
 	}{
 		{
@@ -258,7 +254,7 @@ func TestNewEchoServer(t *testing.T) {
 		/*		host: "127.0.0.1",*/
 		/*		port: ":8080",*/
 		/*	},*/
-		/*	want: &EchoServer{*/
+		/*	want: &echoServer{*/
 		/*		connQueue:    connectionQueue.NewConnectionQueue(),*/
 		/*		idleTimeout:  30 * time.Second,*/
 		/*		maxConns:     500000,*/

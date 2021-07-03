@@ -196,7 +196,6 @@ func TestConnectionQueue_Push(t *testing.T) {
 
 func TestConnectionQueue_Update(t *testing.T) {
 	type args struct {
-		item       *models.Connection
 		lastUpdate time.Time
 	}
 	tests := []struct {
