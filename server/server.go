@@ -42,7 +42,7 @@ func NewEchoServer(host, port string) (*EchoServer, error) {
 		listener:     listener,
 		maxConns:     models.MaxConns,
 		maxReadBytes: models.MaxReadBytes,
-		idleTimeout:  time.Second * 30,
+		idleTimeout:  time.Minute * 3,
 		connQueue:    connectionQueue.NewConnectionQueue(),
 	}, nil
 }
