@@ -48,6 +48,7 @@ func (s *EchoServer) Listen() {
 		if s.currentConns == s.maxConns {
 			s.closeLeastUpdConn()
 		}
+		log.Println("currentConns:", s.currentConns)
 		s.currentConns++
 		conn, err := s.listener.Accept()
 		if err != nil {
@@ -57,14 +58,15 @@ func (s *EchoServer) Listen() {
 			Conn:       conn,
 			LastUpdate: time.Now(),
 		}
-		s.connQueue.Push(c)
+		s.connQueue.Push(&c)
 		go s.handleRequest(&c)
 	}
 }
 
 func (s *EchoServer) handleRequest(c *models.Connection) {
-	log.Println("Accepted new connection")
+	log.Printf("Accepted new connection: %d\n", c.Index)
 	defer func() {
+		s.currentConns--
 		if err := c.Conn.Close(); err != nil {
 			log.Println("Error closing connection", err)
 		}
@@ -89,9 +91,10 @@ func (s *EchoServer) handleRequest(c *models.Connection) {
 			}
 			return
 		}
-		log.Println("Read new data from connection", string(data))
+		log.Printf("Read new data from connection: %s, date: %d\n", string(data), c.Index)
 		if _, err := c.Conn.Write(data); err != nil {
 			log.Println("Error writing response", err)
+			return
 		}
 	}
 }
@@ -109,4 +112,5 @@ func (s *EchoServer) closeLeastUpdConn() {
 	if err := conn.Conn.Close(); err != nil {
 		log.Println("Error closing least active connection", err)
 	}
+	s.currentConns--
 }

@@ -9,35 +9,6 @@ import (
 	"time"
 )
 
-func TestEchoServer_Listen(t *testing.T) {
-	type fields struct {
-		listener     net.Listener
-		connQueue    connectionQueue.ConnectionQueue
-		idleTimeout  time.Duration
-		maxConns     int
-		maxReadBytes int
-		currentConns int
-	}
-	tests := []struct {
-		name   string
-		fields fields
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			/*s := &EchoServer{
-				listener:     tt.fields.listener,
-				connQueue:    tt.fields.connQueue,
-				idleTimeout:  tt.fields.idleTimeout,
-				maxConns:     tt.fields.maxConns,
-				maxReadBytes: tt.fields.maxReadBytes,
-				currentConns: tt.fields.currentConns,
-			}*/
-		})
-	}
-}
-
 func TestEchoServer_closeLeastUpdConn(t *testing.T) {
 	type fields struct {
 		listener     net.Listener
@@ -47,23 +18,49 @@ func TestEchoServer_closeLeastUpdConn(t *testing.T) {
 		maxReadBytes int
 		currentConns int
 	}
+	l, _ := net.Listen("tcp", "127.0.0.1:3333")
 	tests := []struct {
 		name   string
 		fields fields
-		client net.Conn
+		want   string
+		sleep  time.Duration
 	}{
-		// TODO: Add test cases.
+		{
+			name: "close latest conn",
+			fields: fields{
+				listener:     l,
+				connQueue:    connectionQueue.NewConnectionQueue(),
+				idleTimeout:  100 * time.Second,
+				maxConns:     2,
+				maxReadBytes: 8192,
+				currentConns: 0,
+			},
+			want:  "Hello from client 3",
+			sleep: time.Millisecond,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			/*s := &EchoServer{
+			s := &EchoServer{
 				listener:     tt.fields.listener,
 				connQueue:    tt.fields.connQueue,
 				idleTimeout:  tt.fields.idleTimeout,
 				maxConns:     tt.fields.maxConns,
 				maxReadBytes: tt.fields.maxReadBytes,
 				currentConns: tt.fields.currentConns,
-			}*/
+			}
+			go s.Listen()
+			cl1, _ := net.Dial("tcp", "127.0.0.1:3333")
+			cl1.Write([]byte("Hello from client 1"))
+			time.Sleep(2 * time.Second)
+			cl2, _ := net.Dial("tcp", "127.0.0.1:3333")
+			cl2.Write([]byte("Hello from client 2"))
+
+			cl3, _ := net.Dial("tcp", "127.0.0.1:3333")
+			cl3.Write([]byte("Hello from client 3"))
+			buf := make([]byte, tt.fields.maxReadBytes)
+			n, _ := cl3.Read(buf)
+			assert.Equal(t, tt.want, string(buf[:n]))
 		})
 	}
 }
