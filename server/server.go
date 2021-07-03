@@ -4,6 +4,8 @@ import (
 	"echoServer/models"
 	"echoServer/server/connectionQueue"
 	"github.com/pkg/errors"
+	"io"
+	"sync"
 
 	"log"
 	"net"
@@ -16,12 +18,13 @@ type Server interface {
 }
 
 type EchoServer struct {
-	listener     net.Listener
-	connQueue    connectionQueue.ConnectionQueue
-	idleTimeout  time.Duration
-	maxConns     int
-	maxReadBytes int
-	currentConns int
+	listener        net.Listener
+	connQueue       connectionQueue.ConnectionQueue
+	idleTimeout     time.Duration
+	maxConns        int
+	maxReadBytes    int
+	currentConns    int
+	currentConnsMux sync.Mutex
 }
 
 func NewEchoServer(host, port string) (*EchoServer, error) {
@@ -48,8 +51,9 @@ func (s *EchoServer) Listen() {
 		if s.currentConns == s.maxConns {
 			s.closeLeastUpdConn()
 		}
-		log.Println("currentConns:", s.currentConns)
+		s.currentConnsMux.Lock()
 		s.currentConns++
+		s.currentConnsMux.Unlock()
 		conn, err := s.listener.Accept()
 		if err != nil {
 			log.Panicln(err)
@@ -64,34 +68,32 @@ func (s *EchoServer) Listen() {
 }
 
 func (s *EchoServer) handleRequest(c *models.Connection) {
-	log.Printf("Accepted new connection: %d\n", c.Index)
 	defer func() {
+		s.currentConnsMux.Lock()
 		s.currentConns--
+		s.currentConnsMux.Unlock()
 		if err := c.Conn.Close(); err != nil {
 			log.Println("Error closing connection", err)
 		}
 	}()
 	for {
 		if err := c.Conn.SetReadDeadline(time.Now().Add(s.idleTimeout)); err != nil {
-
+			log.Println("Error setting read deadline", err)
 		}
 		buf := make([]byte, s.maxReadBytes)
 		size, err := c.Conn.Read(buf)
-		if os.IsTimeout(err) {
-			if _, err := c.Conn.Write([]byte("Exit due to idle.\n")); err != nil {
-
-			}
+		if err != nil {
+			s.handleReadError(err, c.Conn)
 			return
 		}
 		s.connQueue.Update(c, time.Now())
 		data := buf[:size]
 		if s.isQuit(data) {
-			if _, err := c.Conn.Write([]byte("Got quit signal. Aborting.\n")); err != nil {
-
+			if _, err := c.Conn.Write([]byte(models.MsgQuit)); err != nil {
+				log.Println("Error writing quit response", err)
 			}
 			return
 		}
-		log.Printf("Read new data from connection: %s, date: %d\n", string(data), c.Index)
 		if _, err := c.Conn.Write(data); err != nil {
 			log.Println("Error writing response", err)
 			return
@@ -106,11 +108,29 @@ func (s *EchoServer) isQuit(data []byte) bool {
 func (s *EchoServer) closeLeastUpdConn() {
 	c := s.connQueue.Pop()
 	conn := c.(*models.Connection)
-	if _, err := conn.Conn.Write([]byte("Exit due to idle\n")); err != nil {
+	if _, err := conn.Conn.Write([]byte(models.MsgTimeout)); err != nil {
 		log.Println("Error writing end of stream message", err)
 	}
 	if err := conn.Conn.Close(); err != nil {
 		log.Println("Error closing least active connection", err)
 	}
+	s.currentConnsMux.Lock()
 	s.currentConns--
+	s.currentConnsMux.Unlock()
+}
+
+func (s *EchoServer) handleReadError(err error, conn net.Conn) {
+	if err == io.EOF {
+		if _, err := conn.Write([]byte(models.MsgEOF)); err != nil {
+			log.Println("Error writing EOF response", err)
+		}
+		return
+	}
+	if os.IsTimeout(err) {
+		if _, err := conn.Write([]byte(models.MsgTimeout)); err != nil {
+			log.Println("Error writing timeout response", err)
+		}
+		return
+	}
+	log.Println("Not a normal error", err)
 }

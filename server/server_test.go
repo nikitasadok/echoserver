@@ -148,7 +148,6 @@ func TestEchoServer_handleRequest(t *testing.T) {
 			sleep:  time.Millisecond,
 			msg:    "quit",
 		},
-		// TODO: Add test cases.
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

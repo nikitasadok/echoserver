@@ -3,7 +3,6 @@ package connectionQueue
 import (
 	"echoServer/models"
 	"github.com/stretchr/testify/assert"
-	"reflect"
 	"testing"
 	"time"
 )
@@ -34,9 +33,8 @@ func TestConnectionQueue_Len(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := tt.cq.Len(); got != tt.want {
-				t.Errorf("Len() = %v, want %v", got, tt.want)
-			}
+			got := tt.cq.Len()
+			assert.Equal(t, tt.want, got)
 		})
 	}
 }
@@ -104,9 +102,8 @@ func TestConnectionQueue_Less(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := tt.cq.Less(tt.args.i, tt.args.j); got != tt.want {
-				t.Errorf("Less() = %v, want %v", got, tt.want)
-			}
+			got := tt.cq.Less(tt.args.i, tt.args.j)
+			assert.Equal(t, tt.want, got)
 		})
 	}
 }
@@ -172,44 +169,28 @@ func TestConnectionQueue_Push(t *testing.T) {
 		name string
 		cq   ConnectionQueue
 		args args
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-		})
-	}
-}
-
-func TestConnectionQueue_Swap(t *testing.T) {
-	type args struct {
-		i int
-		j int
-	}
-	tests := []struct {
-		name string
-		cq   ConnectionQueue
-		args args
+		want *models.Connection
 	}{
 		{
-			name: "simple swap",
+			name: "push one and get one",
 			cq:   NewConnectionQueue(),
-			args: args{
-				i: 0,
-				j: 1,
+			args: args{x: &models.Connection{
+				Conn:       nil,
+				LastUpdate: time.Date(2000, 0, 0, 0, 0, 0, 0, time.Now().Location()),
+				Index:      0}},
+			want: &models.Connection{
+				Conn:       nil,
+				LastUpdate: time.Date(2000, 0, 0, 0, 0, 0, 0, time.Now().Location()),
+				Index:      -1,
 			},
 		},
 	}
-
-	tests[0].cq.Push(&models.Connection{
-		Conn:       nil,
-		LastUpdate: time.Time{},
-		Index:      0,
-	})
-
-	// tests[0].cq.Push()
 	for _, tt := range tests {
-		assert.Equal(t, tt.cq[tt.args.i], tt.cq[tt.args.j])
+		t.Run(tt.name, func(t *testing.T) {
+			tt.cq.Push(tt.args.x)
+			got := tt.cq.Pop()
+			assert.Equal(t, tt.want, got.(*models.Connection))
+		})
 	}
 }
 
@@ -222,12 +203,42 @@ func TestConnectionQueue_Update(t *testing.T) {
 		name string
 		cq   ConnectionQueue
 		args args
+		want *models.Connection
 	}{
-		// TODO: Add test cases.
+		{
+			name: "update lowest priority to highest",
+			cq:   NewConnectionQueue(),
+			args: args{
+				lastUpdate: time.Date(1970, 0, 0, 0, 0, 0, 0, time.Now().Location()),
+			},
+			want: &models.Connection{
+				Conn:       nil,
+				LastUpdate: time.Date(1970, 0, 0, 0, 0, 0, 0, time.Now().Location()),
+				Index:      -1,
+			},
+		},
 	}
+	tests[0].cq.Push(&models.Connection{
+		Conn:       nil,
+		LastUpdate: time.Date(1990, 0, 0, 0, 0, 0, 0, time.Now().Location()),
+		Index:      0,
+	})
+	tests[0].cq.Push(&models.Connection{
+		Conn:       nil,
+		LastUpdate: time.Date(2000, 0, 0, 0, 0, 0, 0, time.Now().Location()),
+		Index:      0,
+	})
+	tests[0].cq.Push(&models.Connection{
+		Conn:       nil,
+		LastUpdate: time.Date(2020, 0, 0, 0, 0, 0, 0, time.Now().Location()),
+		Index:      0,
+	})
+
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-		})
+		lowest := tt.cq[tt.cq.Len()-1]
+		tt.cq.Update(lowest, tt.args.lastUpdate)
+		got := tt.cq.Pop()
+		assert.Equal(t, tt.want, got)
 	}
 }
 
@@ -236,13 +247,15 @@ func TestNewConnectionQueue(t *testing.T) {
 		name string
 		want ConnectionQueue
 	}{
-		// TODO: Add test cases.
+		{
+			name: "empty queue",
+			want: ConnectionQueue{},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := NewConnectionQueue(); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("NewConnectionQueue() = %v, want %v", got, tt.want)
-			}
+			got := NewConnectionQueue()
+			assert.Equal(t, tt.want, got)
 		})
 	}
 }
