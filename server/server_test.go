@@ -248,20 +248,6 @@ func TestNewEchoServer(t *testing.T) {
 			want:    nil,
 			wantErr: models.ErrCreateServer,
 		},
-		/*{*/
-		/*	name: "normal server with all params",*/
-		/*	args: args{*/
-		/*		host: "127.0.0.1",*/
-		/*		port: ":8080",*/
-		/*	},*/
-		/*	want: &echoServer{*/
-		/*		connQueue:    connectionQueue.NewConnectionQueue(),*/
-		/*		idleTimeout:  30 * time.Second,*/
-		/*		maxConns:     500000,*/
-		/*		maxReadBytes: 8192,*/
-		/*		currentConns: 0,*/
-		/*	},*/
-		/*},*/
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

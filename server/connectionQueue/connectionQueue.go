@@ -45,7 +45,6 @@ func (cq *ConnectionQueue) Pop() interface{} {
 	return item
 }
 
-// Update modifies the priority and value of an Item in the queue.
 func (cq *ConnectionQueue) Update(item *models.Connection, lastUpdate time.Time) {
 	if len(*cq) == 0 {
 		return
