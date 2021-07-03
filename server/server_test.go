@@ -40,16 +40,16 @@ func TestEchoServer_closeLeastUpdConn(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
+		s := &EchoServer{
+			listener:     tt.fields.listener,
+			connQueue:    tt.fields.connQueue,
+			idleTimeout:  tt.fields.idleTimeout,
+			maxConns:     tt.fields.maxConns,
+			maxReadBytes: tt.fields.maxReadBytes,
+			currentConns: tt.fields.currentConns,
+		}
+		go s.Listen()
 		t.Run(tt.name, func(t *testing.T) {
-			s := &EchoServer{
-				listener:     tt.fields.listener,
-				connQueue:    tt.fields.connQueue,
-				idleTimeout:  tt.fields.idleTimeout,
-				maxConns:     tt.fields.maxConns,
-				maxReadBytes: tt.fields.maxReadBytes,
-				currentConns: tt.fields.currentConns,
-			}
-			go s.Listen()
 			cl1, _ := net.Dial("tcp", "127.0.0.1:3333")
 			cl1.Write([]byte("Hello from client 1"))
 			time.Sleep(2 * time.Second)

@@ -1,7 +1,6 @@
 package connectionQueue
 
 import (
-	"container/heap"
 	"echoServer/models"
 	"time"
 )
@@ -31,10 +30,6 @@ func (cq *ConnectionQueue) Push(x interface{}) {
 	item := x.(*models.Connection)
 	item.Index = n
 	*cq = append(*cq, item)
-	if n == 0 {
-		heap.Init(cq)
-	}
-	heap.Fix(cq, n)
 }
 
 func (cq *ConnectionQueue) Pop() interface{} {
@@ -56,5 +51,4 @@ func (cq *ConnectionQueue) Update(item *models.Connection, lastUpdate time.Time)
 		return
 	}
 	item.LastUpdate = lastUpdate
-	heap.Fix(cq, item.Index)
 }

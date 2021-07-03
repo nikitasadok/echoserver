@@ -1,6 +1,7 @@
 package server
 
 import (
+	"container/heap"
 	"echoServer/models"
 	"echoServer/server/connectionQueue"
 	"github.com/pkg/errors"
@@ -39,8 +40,8 @@ func NewEchoServer(host, port string) (*EchoServer, error) {
 
 	return &EchoServer{
 		listener:     listener,
-		maxConns:     500000,
-		maxReadBytes: 8192,
+		maxConns:     models.MaxConns,
+		maxReadBytes: models.MaxReadBytes,
 		idleTimeout:  time.Second * 30,
 		connQueue:    connectionQueue.NewConnectionQueue(),
 	}, nil
@@ -48,12 +49,9 @@ func NewEchoServer(host, port string) (*EchoServer, error) {
 
 func (s *EchoServer) Listen() {
 	for {
-		if s.currentConns == s.maxConns {
+		if s.connQueue.Len() == s.maxConns {
 			s.closeLeastUpdConn()
 		}
-		s.currentConnsMux.Lock()
-		s.currentConns++
-		s.currentConnsMux.Unlock()
 		conn, err := s.listener.Accept()
 		if err != nil {
 			log.Panicln(err)
@@ -68,6 +66,9 @@ func (s *EchoServer) Listen() {
 }
 
 func (s *EchoServer) handleRequest(c *models.Connection) {
+	s.currentConnsMux.Lock()
+	s.currentConns++
+	s.currentConnsMux.Unlock()
 	defer func() {
 		s.currentConnsMux.Lock()
 		s.currentConns--
@@ -79,6 +80,7 @@ func (s *EchoServer) handleRequest(c *models.Connection) {
 	for {
 		if err := c.Conn.SetReadDeadline(time.Now().Add(s.idleTimeout)); err != nil {
 			log.Println("Error setting read deadline", err)
+			return
 		}
 		buf := make([]byte, s.maxReadBytes)
 		size, err := c.Conn.Read(buf)
@@ -106,6 +108,7 @@ func (s *EchoServer) isQuit(data []byte) bool {
 }
 
 func (s *EchoServer) closeLeastUpdConn() {
+	heap.Init(&s.connQueue)
 	c := s.connQueue.Pop()
 	conn := c.(*models.Connection)
 	if _, err := conn.Conn.Write([]byte(models.MsgTimeout)); err != nil {
